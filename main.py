@@ -99,7 +99,7 @@ Base.metadata.create_all(bind=engine)
 
 
 class UsuarioRegister(BaseModel):
-	nombre: str = Field(min_length=2, max_length=120)
+	nombre: str | None = Field(default=None, min_length=2, max_length=120)
 	email: EmailStr
 	password: str = Field(min_length=8, max_length=128)
 
@@ -310,8 +310,11 @@ def register(usuario_data: UsuarioRegister, db: Session = Depends(get_db)) -> JS
 	if existing_user:
 		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya está registrado")
 
+	nombre = usuario_data.nombre.strip() if usuario_data.nombre else usuario_data.email.split("@", 1)[0]
+	nombre = nombre[:120]
+
 	usuario = Usuario(
-		nombre=usuario_data.nombre.strip(),
+		nombre=nombre,
 		email=usuario_data.email.lower(),
 		password_hash=_hash_password(usuario_data.password),
 	)
