@@ -42,6 +42,20 @@ class ApiRoutesTestCase(unittest.TestCase):
         self.assertTrue(body["ok"])
         return body["data"]
 
+    def register_user_and_get_user(self, email: str, nombre: str | None = None) -> tuple[dict, dict]:
+        payload = {
+            "email": email,
+            "password": "Password123!",
+        }
+        if nombre is not None:
+            payload["nombre"] = nombre
+
+        response = self.client.post("/auth/register", json=payload)
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        return body["data"], body
+
     def login_user(self, email: str) -> str:
         response = self.client.post(
             "/auth/login",
@@ -62,17 +76,21 @@ class ApiRoutesTestCase(unittest.TestCase):
 
     def test_register_without_nombre(self) -> None:
         email = f"{uuid4().hex[:12]}@example.com"
-        user = self.register_user(email)
+        data, body = self.register_user_and_get_user(email)
 
-        self.assertEqual(user["email"], email)
-        self.assertEqual(user["nombre"], email.split("@", 1)[0])
+        self.assertIn("access_token", data)
+        self.assertEqual(data["token_type"], "bearer")
+        self.assertEqual(data["usuario"]["email"], email)
+        self.assertEqual(data["usuario"]["nombre"], email.split("@", 1)[0])
+        self.assertEqual(body["message"], "Usuario registrado correctamente")
 
     def test_register_with_nombre(self) -> None:
         email = f"{uuid4().hex[:12]}@example.com"
-        user = self.register_user(email, nombre="Usuario Demo")
+        data, _ = self.register_user_and_get_user(email, nombre="Usuario Demo")
 
-        self.assertEqual(user["email"], email)
-        self.assertEqual(user["nombre"], "Usuario Demo")
+        self.assertIn("access_token", data)
+        self.assertEqual(data["usuario"]["email"], email)
+        self.assertEqual(data["usuario"]["nombre"], "Usuario Demo")
 
     def test_register_duplicate_email(self) -> None:
         email = f"{uuid4().hex[:12]}@example.com"

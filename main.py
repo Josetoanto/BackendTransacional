@@ -145,6 +145,12 @@ class MessageResponse(BaseModel):
 	message: str
 
 
+class AuthResponse(BaseModel):
+	access_token: str
+	token_type: str = "bearer"
+	usuario: UsuarioOut
+
+
 app = FastAPI(title=APP_NAME, version="1.0.0")
 
 CORS_ALLOW_ORIGINS = _build_cors_origins()
@@ -330,12 +336,17 @@ def register(usuario_data: UsuarioRegister, db: Session = Depends(get_db)) -> JS
 		db.rollback()
 		raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error al registrar el usuario") from exc
 
+	access_token = _create_token(usuario.id)
+
 	return JSONResponse(
 		status_code=status.HTTP_201_CREATED,
 		content={
 			"ok": True,
 			"message": "Usuario registrado correctamente",
-			"data": _usuario_to_out(usuario).model_dump(mode="json"),
+			"data": AuthResponse(
+				access_token=access_token,
+				usuario=_usuario_to_out(usuario),
+			).model_dump(mode="json"),
 		},
 	)
 
