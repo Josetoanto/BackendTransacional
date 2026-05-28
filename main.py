@@ -11,6 +11,7 @@ from typing import Any, Generator, Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, create_engine, select
@@ -22,6 +23,13 @@ APP_NAME = "Backend Transaccional"
 TOKEN_TTL_SECONDS = int(os.getenv("TOKEN_TTL_SECONDS", "86400"))
 TOKEN_SECRET = os.getenv("TOKEN_SECRET", "change-me-in-production")
 PASSWORD_ITERATIONS = int(os.getenv("PASSWORD_ITERATIONS", "210000"))
+
+
+def _build_cors_origins() -> list[str]:
+	raw_origins = os.getenv("CORS_ALLOW_ORIGINS", "*").strip()
+	if not raw_origins:
+		return ["*"]
+	return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
 def _build_database_url() -> str:
@@ -138,6 +146,17 @@ class MessageResponse(BaseModel):
 
 
 app = FastAPI(title=APP_NAME, version="1.0.0")
+
+CORS_ALLOW_ORIGINS = _build_cors_origins()
+CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+
+app.add_middleware(
+	CORSMiddleware,
+	allow_origins=CORS_ALLOW_ORIGINS,
+	allow_credentials=CORS_ALLOW_CREDENTIALS,
+	allow_methods=["*"],
+	allow_headers=["*"],
+)
 
 
 @app.exception_handler(HTTPException)
@@ -459,4 +478,3 @@ if __name__ == "__main__":
 		port=int(os.getenv("PORT", "8000")),
 		reload=os.getenv("RELOAD", "true").lower() == "true",
 	)
-import os
